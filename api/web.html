@@ -515,7 +515,7 @@ async function cargarCampos() {
   try {
 
     const r = await fetch(
-      API + "/campos?solo_activos=true"
+      API + "/fields?solo_activos=true"
     );
 
     if (!r.ok) {
@@ -765,7 +765,7 @@ async function guardarEvaluacion() {
   try {
 
     const r = await fetch(
-      API + "/evaluaciones",
+      API + "/evaluations",
       {
         method: "POST",
         headers: {
@@ -827,7 +827,7 @@ async function cargarRegistros() {
       .value
       .trim();
 
-  let url = API + "/evaluaciones?limite=100";
+  let url = API + "/evaluations?limite=100";
 
   if (documento) {
 
@@ -916,7 +916,7 @@ async function buscarParaEditar() {
 
     const r = await fetch(
       API +
-      "/evaluaciones?documento=" +
+      "/evaluations?documento=" +
       encodeURIComponent(documento) +
       "&limite=1"
     );
@@ -991,7 +991,7 @@ async function actualizarEvaluacion() {
 
     const r = await fetch(
       API +
-      "/evaluaciones/" +
+      "/evaluations/" +
       evaluacionEditando.id,
       {
         method: "PUT",
@@ -1049,7 +1049,7 @@ async function cargarListaCampos() {
   try {
 
     const r = await fetch(
-      API + "/campos?solo_activos=false"
+      API + "/fields?solo_activos=false"
     );
 
     const json = await r.json();
@@ -1156,7 +1156,7 @@ async function crearCampo() {
   try {
 
     const r = await fetch(
-      API + "/campos",
+      API + "/fields",
       {
         method: "POST",
         headers: {
