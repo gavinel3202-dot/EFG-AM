@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Senior Fitness Test INDER</title>
+
+  <style>
+    :root {
+      --verde: #147a45;
+      --verde-oscuro: #0d5c34;
+      --fondo: #f5f7f6;
+      --blanco: #ffffff;
+      --texto: #17211b;
+      --gris: #647069;
+      --borde: #dce5df;
+      --rojo: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--fondo);
+      color: var(--texto);
+    }
+
+    .app {
+      max-width: 760px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: var(--blanco);
+    }
+
+    header {
+      padding: 24px 20px 18px;
+      background: var(--verde);
+      color: white;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1.15;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      opacity: .9;
+    }
+
+    nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--borde);
+      background: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    nav button {
+      border: 0;
+      background: white;
+      padding: 14px 5px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--gris);
+    }
+
+    nav button.active {
+      color: var(--verde);
+      font-weight: bold;
+      border-bottom: 3px solid var(--verde);
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 23px;
+    }
+
+    h3 {
+      margin-top: 28px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--borde);
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin: 15px 0 7px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--borde);
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-size: 16px;
+      background: white;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+      min-height: auto;
+      transform: scale(1.35);
+      margin-right: 9px;
+    }
+
+    .checkbox-line {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    .checkbox-line label {
+      margin: 0;
+      font-weight: normal;
+    }
+
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 9px;
+      padding: 15px;
+      margin-top: 20px;
+      background: var(--verde);
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: var(--verde-oscuro);
+    }
+
+    .btn-secondary {
+      background: #eef3ef;
+      color: var(--texto);
+    }
+
+    .card {
+      border: 1px solid var(--borde);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 12px;
+      background: white;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin: 15px 0;
+      display: none;
+    }
+
+    .status.ok {
+      display: block;
+      background: #e8f6ed;
+      color: #166534;
+    }
+
+    .status.error {
+      display: block;
+      background: #feeceb;
+      color: var(--rojo);
+    }
+
+    .loading {
+      display: none;
+      padding: 10px 0;
+      color: var(--gris);
+    }
+
+    .field-row {
+      border: 1px solid var(--borde);
+      border-radius: 9px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--gris);
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 23px;
+      }
+
+      nav button {
+        font-size: 10px;
+        padding: 12px 2px;
+      }
+
+      main {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header>
+    <h1>Senior Fitness Test INDER</h1>
+    <p>Valoración funcional · Registro en la nube</p>
+  </header>
+
+  <nav>
+    <button id="navNueva" class="active" onclick="mostrar('nueva')">
+      ＋ Nueva
+    </button>
+
+    <button id="navRegistros" onclick="mostrar('registros')">
+      Registros
+    </button>
+
+    <button id="navEditar" onclick="mostrar('editar')">
+      Editar
+    </button>
+
+    <button id="navCampos" onclick="mostrar('campos')">
+      Campos
+    </button>
+  </nav>
+
+  <main>
+
+    <!-- ========================================= -->
+    <!-- NUEVA VALORACIÓN -->
+    <!-- ========================================= -->
+
+    <section id="nueva" class="screen active">
+
+      <h2>Nueva valoración</h2>
+
+      <p class="small">
+        Los datos se guardan directamente en la base institucional en la nube.
+      </p>
+
+      <div id="estadoNueva" class="status"></div>
+
+      <label>Número de documento *</label>
+      <input id="documento" type="text">
+
+      <label>Nombres y apellidos *</label>
+      <input id="nombres" type="text">
+
+      <label>Fecha de nacimiento *</label>
+      <input id="fechaNacimiento" type="date">
+
+      <label>Sexo para baremos *</label>
+      <select id="sexo">
+        <option value="F">Femenino</option>
+        <option value="M">Masculino</option>
+      </select>
+
+      <div id="camposFormulario"></div>
+
+      <div class="checkbox-line">
+        <input id="consentimiento" type="checkbox">
+        <label for="consentimiento">
+          Se obtuvo consentimiento informado.
+        </label>
+      </div>
+
+      <div id="cargandoCampos" class="loading">
+        Cargando campos...
+      </div>
+
+      <button class="btn" onclick="guardarEvaluacion()">
+        Guardar valoración
+      </button>
+
+    </section>
+
+
+    <!-- ========================================= -->
+    <!-- REGISTROS -->
+    <!-- ========================================= -->
+
+    <section id="registros" class="screen">
+
+      <h2>Registros</h2>
+
+      <label>Buscar por documento</label>
+
+      <input
+        id="buscarDocumento"
+        type="text"
+        placeholder="Documento o dejar vacío para ver todos"
+      >
+
+      <button class="btn" onclick="cargarRegistros()">
+        Buscar
+      </button>
+
+      <div id="estadoRegistros" class="status"></div>
+
+      <div id="listaRegistros"></div>
+
+    </section>
+
+
+    <!-- ========================================= -->
+    <!-- EDITAR -->
+    <!-- ========================================= -->
+
+    <section id="editar" class="screen">
+
+      <h2>Editar valoración</h2>
+
+      <label>Documento</label>
+      <input id="documentoEditar" type="text">
+
+      <button class="btn" onclick="buscarParaEditar()">
+        Buscar último registro
+      </button>
+
+      <div id="estadoEditar" class="status"></div>
+
+      <div id="formEditar" style="display:none">
+
+        <label>Nombres</label>
+        <input id="editarNombres">
+
+        <label>Sexo</label>
+        <select id="editarSexo">
+          <option value="F">Femenino</option>
+          <option value="M">Masculino</option>
+        </select>
+
+        <div id="camposEditar"></div>
+
+        <button class="btn" onclick="actualizarEvaluacion()">
+          Guardar cambios
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- ========================================= -->
+    <!-- CAMPOS -->
+    <!-- ========================================= -->
+
+    <section id="campos" class="screen">
+
+      <h2>Configuración de campos</h2>
+
+      <p class="small">
+        Permite controlar las variables visibles sin modificar la tabla principal.
+      </p>
+
+      <div id="estadoCampos" class="status"></div>
+
+      <div id="listaCampos"></div>
+
+      <h3>Agregar campo</h3>
+
+      <label>Clave técnica *</label>
+      <input
+        id="nuevoClave"
+        placeholder="ejemplo: equilibrio_estatico"
+      >
+
+      <label>Nombre visible *</label>
+      <input id="nuevoEtiqueta">
+
+      <label>Grupo</label>
+      <input id="nuevoGrupo" value="Otros">
+
+      <label>Tipo</label>
+      <select id="nuevoTipo">
+        <option value="texto">Texto</option>
+        <option value="texto_largo">Texto largo</option>
+        <option value="numero">Número</option>
+        <option value="entero">Entero</option>
+        <option value="checkbox">Sí / No</option>
+      </select>
+
+      <label>Unidad</label>
+      <input
+        id="nuevoUnidad"
+        placeholder="kg, cm, segundos..."
+      >
+
+      <div class="checkbox-line">
+        <input id="nuevoRequerido" type="checkbox">
+        <label for="nuevoRequerido">
+          Campo obligatorio
+        </label>
+      </div>
+
+      <button class="btn" onclick="crearCampo()">
+        Crear campo
+      </button>
+
+    </section>
+
+  </main>
+
+</div>
+
+
+<script>
+
+const API = window.location.origin;
+
+let campos = [];
+
+let evaluacionEditando = null;
+
+
+/* ============================================= */
+/* NAVEGACIÓN */
+/* ============================================= */
+
+function mostrar(nombre) {
+
+  document
+    .querySelectorAll(".screen")
+    .forEach(x => x.classList.remove("active"));
+
+  document
+    .querySelectorAll("nav button")
+    .forEach(x => x.classList.remove("active"));
+
+  document
+    .getElementById(nombre)
+    .classList.add("active");
+
+  const mapa = {
+    nueva: "navNueva",
+    registros: "navRegistros",
+    editar: "navEditar",
+    campos: "navCampos"
+  };
+
+  document
+    .getElementById(mapa[nombre])
+    .classList.add("active");
+
+  if (nombre === "registros") {
+    cargarRegistros();
+  }
+
+  if (nombre === "campos") {
+    cargarListaCampos();
+  }
+
+}
+
+
+/* ============================================= */
+/* MENSAJES */
+/* ============================================= */
+
+function mensaje(id, texto, tipo="ok") {
+
+  const div = document.getElementById(id);
+
+  div.className = "status " + tipo;
+
+  div.innerText = texto;
+
+}
+
+
+/* ============================================= */
+/* CARGAR CAMPOS */
+/* ============================================= */
+
+async function cargarCampos() {
+
+  document
+    .getElementById("cargandoCampos")
+    .style.display = "block";
+
+  try {
+
+    const r = await fetch(
+      API + "/fields?solo_activos=true"
+    );
+
+    if (!r.ok) {
+      throw new Error("No fue posible cargar los campos");
+    }
+
+    const json = await r.json();
+
+    campos = json.campos || json.fields || [];
+
+    renderCampos(
+      "camposFormulario",
+      {},
+      "nuevo"
+    );
+
+  } catch (e) {
+
+    mensaje(
+      "estadoNueva",
+      e.message,
+      "error"
+    );
+
+  } finally {
+
+    document
+      .getElementById("cargandoCampos")
+      .style.display = "none";
+  }
+
+}
+
+
+/* ============================================= */
+/* CREAR INPUT DINÁMICO */
+/* ============================================= */
+
+function inputCampo(campo, valor, prefijo) {
+
+  const id = prefijo + "_" + campo.clave;
+
+  const requerido = campo.requerido ? " *" : "";
+
+  const unidad = campo.unidad
+    ? " (" + campo.unidad + ")"
+    : "";
+
+  let html = `
+    <label>
+      ${campo.etiqueta}${unidad}${requerido}
+    </label>
+  `;
+
+  if (campo.tipo === "checkbox") {
+
+    html += `
+      <div class="checkbox-line">
+        <input
+          id="${id}"
+          type="checkbox"
+          ${valor ? "checked" : ""}
+        >
+        <label for="${id}">
+          Sí
+        </label>
+      </div>
+    `;
+
+  } else if (campo.tipo === "texto_largo") {
+
+    html += `
+      <textarea id="${id}">${valor ?? ""}</textarea>
+    `;
+
+  } else if (
+    campo.tipo === "numero" ||
+    campo.tipo === "entero"
+  ) {
+
+    html += `
+      <input
+        id="${id}"
+        type="number"
+        step="${campo.tipo === "entero" ? "1" : "0.1"}"
+        value="${valor ?? ""}"
+      >
+    `;
+
+  } else {
+
+    html += `
+      <input
+        id="${id}"
+        type="text"
+        value="${valor ?? ""}"
+      >
+    `;
+  }
+
+  return html;
+}
+
+
+/* ============================================= */
+/* RENDER CAMPOS */
+/* ============================================= */
+
+function renderCampos(
+  contenedor,
+  valores={},
+  prefijo="nuevo"
+) {
+
+  const grupos = {};
+
+  campos.forEach(c => {
+
+    const grupo = c.grupo || "Otros";
+
+    if (!grupos[grupo]) {
+      grupos[grupo] = [];
+    }
+
+    grupos[grupo].push(c);
+
+  });
+
+  let html = "";
+
+  Object.keys(grupos).forEach(grupo => {
+
+    html += `<h3>${grupo}</h3>`;
+
+    grupos[grupo].forEach(campo => {
+
+      html += inputCampo(
+        campo,
+        valores[campo.clave],
+        prefijo
+      );
+
+    });
+
+  });
+
+  document
+    .getElementById(contenedor)
+    .innerHTML = html;
+
+}
+
+
+/* ============================================= */
+/* OBTENER DATOS DINÁMICOS */
+/* ============================================= */
+
+function obtenerDatos(prefijo) {
+
+  const datos = {};
+
+  campos.forEach(campo => {
+
+    const el = document.getElementById(
+      prefijo + "_" + campo.clave
+    );
+
+    if (!el) {
+      return;
+    }
+
+    let valor;
+
+    if (campo.tipo === "checkbox") {
+
+      valor = el.checked;
+
+    } else if (
+      campo.tipo === "numero" ||
+      campo.tipo === "entero"
+    ) {
+
+      valor =
+        el.value === ""
+        ? null
+        : Number(el.value);
+
+    } else {
+
+      valor = el.value;
+    }
+
+    datos[campo.clave] = valor;
+
+  });
+
+  return datos;
+
+}
+
+
+/* ============================================= */
+/* GUARDAR EVALUACIÓN */
+/* ============================================= */
+
+async function guardarEvaluacion() {
+
+  const documento =
+    document.getElementById("documento").value.trim();
+
+  const nombres =
+    document.getElementById("nombres").value.trim();
+
+  const fecha =
+    document.getElementById("fechaNacimiento").value;
+
+  const sexo =
+    document.getElementById("sexo").value;
+
+  const consentimiento =
+    document.getElementById("consentimiento").checked;
+
+  if (!documento || !nombres || !fecha) {
+
+    mensaje(
+      "estadoNueva",
+      "Documento, nombres y fecha de nacimiento son obligatorios.",
+      "error"
+    );
+
+    return;
+  }
+
+  if (!consentimiento) {
+
+    mensaje(
+      "estadoNueva",
+      "Debe registrarse el consentimiento informado.",
+      "error"
+    );
+
+    return;
+  }
+
+  const datos = obtenerDatos("nuevo");
+
+  try {
+
+    const r = await fetch(
+      API + "/evaluations",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          documento: documento,
+          nombres: nombres,
+          fecha_nacimiento: fecha,
+          sexo: sexo,
+          datos: datos,
+          interpretacion: {},
+          consentimiento: consentimiento
+        })
+      }
+    );
+
+    const json = await r.json();
+
+    if (!r.ok) {
+
+      throw new Error(
+        json.detail ||
+        "No fue posible guardar la valoración"
+      );
+    }
+
+    mensaje(
+      "estadoNueva",
+      "Valoración guardada correctamente en la nube.",
+      "ok"
+    );
+
+    document.getElementById("documento").value = "";
+    document.getElementById("nombres").value = "";
+    document.getElementById("consentimiento").checked = false;
+
+  } catch (e) {
+
+    mensaje(
+      "estadoNueva",
+      e.message,
+      "error"
+    );
+  }
+
+}
+
+
+/* ============================================= */
+/* LISTAR REGISTROS */
+/* ============================================= */
+
+async function cargarRegistros() {
+
+  const documento =
+    document
+      .getElementById("buscarDocumento")
+      .value
+      .trim();
+
+  let url = API + "/evaluations?limite=100";
+
+  if (documento) {
+
+    url +=
+      "&documento=" +
+      encodeURIComponent(documento);
+  }
+
+  try {
+
+    const r = await fetch(url);
+
+    const json = await r.json();
+
+    if (!r.ok) {
+      throw new Error(json.detail || "Error al consultar");
+    }
+
+    const registros =
+      json.evaluaciones ||
+      json.evaluations ||
+      [];
+
+    let html = "";
+
+    registros.forEach(x => {
+
+      html += `
+        <div class="card">
+          <strong>${x.nombres}</strong>
+          Documento: ${x.documento}<br>
+          Edad: ${x.edad ?? ""}<br>
+          Sexo: ${x.sexo}<br>
+          <span class="small">
+            ${x.created_at ?? ""}
+          </span>
+        </div>
+      `;
+
+    });
+
+    if (!html) {
+      html = "<p>No hay registros.</p>";
+    }
+
+    document
+      .getElementById("listaRegistros")
+      .innerHTML = html;
+
+  } catch (e) {
+
+    mensaje(
+      "estadoRegistros",
+      e.message,
+      "error"
+    );
+  }
+
+}
+
+
+/* ============================================= */
+/* BUSCAR PARA EDITAR */
+/* ============================================= */
+
+async function buscarParaEditar() {
+
+  const documento =
+    document
+      .getElementById("documentoEditar")
+      .value
+      .trim();
+
+  if (!documento) {
+
+    mensaje(
+      "estadoEditar",
+      "Ingrese un documento.",
+      "error"
+    );
+
+    return;
+  }
+
+  try {
+
+    const r = await fetch(
+      API +
+      "/evaluations?documento=" +
+      encodeURIComponent(documento) +
+      "&limite=1"
+    );
+
+    const json = await r.json();
+
+    const lista =
+      json.evaluaciones ||
+      json.evaluations ||
+      [];
+
+    if (!lista.length) {
+
+      throw new Error(
+        "No se encontró una valoración."
+      );
+    }
+
+    evaluacionEditando = lista[0];
+
+    document.getElementById(
+      "editarNombres"
+    ).value =
+      evaluacionEditando.nombres || "";
+
+    document.getElementById(
+      "editarSexo"
+    ).value =
+      evaluacionEditando.sexo || "F";
+
+    renderCampos(
+      "camposEditar",
+      evaluacionEditando.datos || {},
+      "editar"
+    );
+
+    document
+      .getElementById("formEditar")
+      .style.display = "block";
+
+    mensaje(
+      "estadoEditar",
+      "Registro encontrado.",
+      "ok"
+    );
+
+  } catch (e) {
+
+    mensaje(
+      "estadoEditar",
+      e.message,
+      "error"
+    );
+  }
+
+}
+
+
+/* ============================================= */
+/* ACTUALIZAR EVALUACIÓN */
+/* ============================================= */
+
+async function actualizarEvaluacion() {
+
+  if (!evaluacionEditando) {
+    return;
+  }
+
+  const datos = obtenerDatos("editar");
+
+  try {
+
+    const r = await fetch(
+      API +
+      "/evaluations/" +
+      evaluacionEditando.id,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          nombres:
+            document
+              .getElementById("editarNombres")
+              .value,
+          sexo:
+            document
+              .getElementById("editarSexo")
+              .value,
+          datos: datos
+        })
+      }
+    );
+
+    const json = await r.json();
+
+    if (!r.ok) {
+
+      throw new Error(
+        json.detail ||
+        "No fue posible actualizar"
+      );
+    }
+
+    mensaje(
+      "estadoEditar",
+      "Valoración actualizada correctamente.",
+      "ok"
+    );
+
+  } catch (e) {
+
+    mensaje(
+      "estadoEditar",
+      e.message,
+      "error"
+    );
+  }
+
+}
+
+
+/* ============================================= */
+/* LISTA DE CAMPOS */
+/* ============================================= */
+
+async function cargarListaCampos() {
+
+  try {
+
+    const r = await fetch(
+      API + "/fields?solo_activos=false"
+    );
+
+    const json = await r.json();
+
+    const lista =
+      json.campos ||
+      json.fields ||
+      [];
+
+    let html = "";
+
+    lista.forEach(c => {
+
+      html += `
+        <div class="field-row">
+          <strong>${c.etiqueta}</strong>
+          <div class="small">
+            ${c.grupo} · ${c.clave} · ${c.tipo}
+            ${c.unidad ? " · " + c.unidad : ""}
+          </div>
+        </div>
+      `;
+
+    });
+
+    document
+      .getElementById("listaCampos")
+      .innerHTML = html;
+
+  } catch (e) {
+
+    mensaje(
+      "estadoCampos",
+      e.message,
+      "error"
+    );
+  }
+
+}
+
+
+/* ============================================= */
+/* CREAR CAMPO */
+/* ============================================= */
+
+async function crearCampo() {
+
+  const clave =
+    document
+      .getElementById("nuevoClave")
+      .value
+      .trim();
+
+  const etiqueta =
+    document
+      .getElementById("nuevoEtiqueta")
+      .value
+      .trim();
+
+  if (!clave || !etiqueta) {
+
+    mensaje(
+      "estadoCampos",
+      "Clave y nombre visible son obligatorios.",
+      "error"
+    );
+
+    return;
+  }
+
+  const payload = {
+
+    clave: clave,
+
+    etiqueta: etiqueta,
+
+    grupo:
+      document
+        .getElementById("nuevoGrupo")
+        .value || "Otros",
+
+    tipo:
+      document
+        .getElementById("nuevoTipo")
+        .value,
+
+    unidad:
+      document
+        .getElementById("nuevoUnidad")
+        .value || null,
+
+    opciones: [],
+
+    requerido:
+      document
+        .getElementById("nuevoRequerido")
+        .checked,
+
+    activo: true,
+
+    orden: 100
+  };
+
+  try {
+
+    const r = await fetch(
+      API + "/fields",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const json = await r.json();
+
+    if (!r.ok) {
+
+      throw new Error(
+        json.detail ||
+        "No fue posible crear el campo."
+      );
+    }
+
+    mensaje(
+      "estadoCampos",
+      "Campo creado correctamente.",
+      "ok"
+    );
+
+    await cargarCampos();
+
+    await cargarListaCampos();
+
+  } catch (e) {
+
+    mensaje(
+      "estadoCampos",
+      e.message,
+      "error"
+    );
+  }
+
+}
+
+
+/* ============================================= */
+/* INICIO */
+/* ============================================= */
+
+cargarCampos();
+
+</script>
+
+</body>
+</html>
