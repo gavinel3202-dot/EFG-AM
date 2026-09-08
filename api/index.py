@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from fastapi.responses import HTMLResponse
 from datetime import date, datetime
 from typing import Any, Dict, List, Literal, Optional
 
@@ -289,20 +291,17 @@ def evaluar_obesidad_sarcopenica(
 # RUTA PRINCIPAL
 # ==========================================================
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
+    archivo = Path(__file__).resolve().parent / "web.html"
 
-    return {
-        "message": (
-            "API Senior Fitness Test "
-            "operando correctamente en Vercel"
-        ),
-        "version": "2.0.0",
-        "supabase_configurado": bool(
-            SUPABASE_URL
-            and SUPABASE_SERVICE_ROLE_KEY
-        ),
-    }
+    if not archivo.exists():
+        raise HTTPException(
+            status_code=500,
+            detail="No se encontró la interfaz web.html"
+        )
+
+    return archivo.read_text(encoding="utf-8")
 
 
 # ==========================================================
