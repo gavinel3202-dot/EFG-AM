@@ -115,7 +115,361 @@ def registrar_auditoria(
         # Un error de auditoría no debe impedir una valoración.
         pass
 
+# ==========================================================
+# MOTOR DE INTERPRETACIÓN SFT
+# ==========================================================
 
+def buscar_valor(datos: Dict[str, Any], claves: List[str]):
+    """
+    Busca un resultado usando varios nombres posibles.
+    Devuelve (clave_encontrada, valor).
+    """
+    for clave in claves:
+        if clave in datos and datos[clave] not in (None, ""):
+            try:
+                return clave, float(datos[clave])
+            except (TypeError, ValueError):
+                return clave, None
+
+    return None, None
+
+
+def obtener_baremo(
+    supabase: Client,
+    clave_prueba: str,
+    sexo: str,
+    edad: int,
+):
+    respuesta = (
+        supabase
+        .table("baremos_sft")
+        .select("*")
+        .eq("clave_prueba", clave_prueba)
+        .eq("sexo", sexo)
+        .execute()
+    )
+
+    for fila in respuesta.data or []:
+        if fila["edad_min"] <= edad <= fila["edad_max"]:
+            return fila
+
+    return None
+
+
+def obtener_criterio_mantenimiento(
+    supabase: Client,
+    clave_prueba: str,
+    sexo: str,
+    edad: int,
+):
+    respuesta = (
+        supabase
+        .table("criterios_mantenimiento")
+        .select("*")
+        .eq("clave_prueba", clave_prueba)
+        .eq("sexo", sexo)
+        .execute()
+    )
+
+    for fila in respuesta.data or []:
+        if fila["edad_min"] <= edad <= fila["edad_max"]:
+            return fila
+
+    return None
+
+
+def clasificar_por_baremo(
+    valor: float,
+    baremo: Dict[str, Any],
+) -> str:
+
+    p25 = float(baremo["p25"])
+    p75 = float(baremo["p75"])
+    mayor_es_mejor = bool(baremo["mayor_es_mejor"])
+
+    if mayor_es_mejor:
+
+        if valor < p25:
+            return "Por debajo del rango normal"
+
+        if valor > p75:
+            return "Por encima del rango normal"
+
+        return "Dentro del rango normal"
+
+    # Pruebas donde MENOR resultado es mejor,
+    # como 8-Foot Up-and-Go.
+    if valor > p25:
+        return "Por debajo del rango normal"
+
+    if valor < p75:
+        return "Por encima del rango normal"
+
+    return "Dentro del rango normal"
+
+
+def evaluar_criterio_mantenimiento(
+    valor: float,
+    criterio: Optional[Dict[str, Any]],
+):
+
+    if not criterio:
+        return None
+
+    objetivo = float(criterio["valor_objetivo"])
+    operador = criterio["cumple_si"]
+
+    if operador == ">=":
+        cumple = valor >= objetivo
+    else:
+        cumple = valor <= objetivo
+
+    return {
+        "cumple": cumple,
+        "valor_objetivo": objetivo,
+        "operador": operador,
+        "unidad": criterio["unidad"],
+    }
+
+
+def interpretar_evaluacion(
+    supabase: Client,
+    edad: int,
+    sexo: str,
+    datos: Dict[str, Any],
+) -> Dict[str, Any]:
+
+    resultado = {
+        "edad": edad,
+        "sexo": sexo,
+        "grupo_normativo": None,
+        "imc": None,
+        "pruebas": {},
+        "resumen": {
+            "por_debajo": 0,
+            "dentro_rango": 0,
+            "por_encima": 0,
+            "total_interpretadas": 0,
+        },
+        "advertencias": [],
+    }
+
+    # ======================================================
+    # EDAD
+    # ======================================================
+
+    if edad < 60 or edad > 94:
+        resultado["advertencias"].append(
+            "No existen baremos SFT configurados para esta edad."
+        )
+        return resultado
+
+    inicio = 60 + ((edad - 60) // 5) * 5
+    fin = min(inicio + 4, 94)
+
+    resultado["grupo_normativo"] = f"{inicio}-{fin}"
+
+    # ======================================================
+    # IMC
+    # ======================================================
+
+    _, peso = buscar_valor(
+        datos,
+        ["peso_kg", "peso"]
+    )
+
+    _, talla = buscar_valor(
+        datos,
+        ["talla_m", "talla"]
+    )
+
+    if peso is not None and talla is not None and talla > 0:
+        resultado["imc"] = round(
+            peso / (talla ** 2),
+            2
+        )
+
+    # ======================================================
+    # CONFIGURACIÓN DE PRUEBAS
+    # ======================================================
+
+    pruebas = {
+
+        "chair_stand": {
+            "nombre": "Sentarse y levantarse de una silla",
+            "claves": [
+                "chair_stand",
+                "sentarse_levantarse"
+            ],
+            "conversion": "ninguna",
+        },
+
+        "arm_curl": {
+            "nombre": "Flexiones del brazo",
+            "claves": [
+                "arm_curl",
+                "flexiones_brazo"
+            ],
+            "conversion": "ninguna",
+        },
+
+        "six_min_walk": {
+            "nombre": "Caminata de 6 minutos",
+            "claves": [
+                "six_min_walk",
+                "six_min_walk_m",
+                "caminata_6_min"
+            ],
+            # La aplicación recibe metros;
+            # los baremos están en yardas.
+            "conversion": "metros_a_yardas",
+        },
+
+        "two_min_step": {
+            "nombre": "Marcha de 2 minutos",
+            "claves": [
+                "two_min_step",
+                "marcha_2_min"
+            ],
+            "conversion": "ninguna",
+        },
+
+        "chair_sit_reach": {
+            "nombre": "Sentado y alcanzar el pie",
+            "claves": [
+                "chair_sit_reach",
+                "sit_reach"
+            ],
+            # El protocolo registra cm;
+            # los baremos originales están en pulgadas.
+            "conversion": "cm_a_pulgadas",
+        },
+
+        "back_scratch": {
+            "nombre": "Alcanzar manos tras la espalda",
+            "claves": [
+                "back_scratch",
+                "manos_espalda"
+            ],
+            "conversion": "cm_a_pulgadas",
+        },
+
+        "eight_foot_up_go": {
+            "nombre": "8-Foot Up-and-Go",
+            "claves": [
+                "eight_foot_up_go",
+                "up_and_go"
+            ],
+            "conversion": "ninguna",
+        },
+    }
+
+    # ======================================================
+    # INTERPRETAR CADA PRUEBA
+    # ======================================================
+
+    for clave_prueba, config in pruebas.items():
+
+        clave_encontrada, valor_original = buscar_valor(
+            datos,
+            config["claves"]
+        )
+
+        if valor_original is None:
+            continue
+
+        valor_baremo = valor_original
+        unidad_ingresada = None
+
+        if config["conversion"] == "cm_a_pulgadas":
+
+            valor_baremo = valor_original / 2.54
+            unidad_ingresada = "cm"
+
+        elif config["conversion"] == "metros_a_yardas":
+
+            valor_baremo = valor_original * 1.0936133
+            unidad_ingresada = "metros"
+
+        baremo = obtener_baremo(
+            supabase,
+            clave_prueba,
+            sexo,
+            edad,
+        )
+
+        if not baremo:
+
+            resultado["advertencias"].append(
+                f"No se encontró baremo para {config['nombre']}."
+            )
+            continue
+
+        clasificacion = clasificar_por_baremo(
+            valor_baremo,
+            baremo,
+        )
+
+        criterio = obtener_criterio_mantenimiento(
+            supabase,
+            clave_prueba,
+            sexo,
+            edad,
+        )
+
+        mantenimiento = evaluar_criterio_mantenimiento(
+            valor_baremo,
+            criterio,
+        )
+
+        registro = {
+            "nombre": config["nombre"],
+            "clave_datos": clave_encontrada,
+            "resultado_original": valor_original,
+            "unidad_ingresada": unidad_ingresada or baremo["unidad"],
+            "resultado_para_baremo": round(valor_baremo, 2),
+            "unidad_baremo": baremo["unidad"],
+            "p25": float(baremo["p25"]),
+            "p75": float(baremo["p75"]),
+            "mayor_es_mejor": bool(
+                baremo["mayor_es_mejor"]
+            ),
+            "clasificacion": clasificacion,
+            "criterio_mantenimiento": mantenimiento,
+        }
+
+        resultado["pruebas"][clave_prueba] = registro
+
+        resultado["resumen"]["total_interpretadas"] += 1
+
+        if clasificacion == "Por debajo del rango normal":
+
+            resultado["resumen"]["por_debajo"] += 1
+
+        elif clasificacion == "Dentro del rango normal":
+
+            resultado["resumen"]["dentro_rango"] += 1
+
+        else:
+
+            resultado["resumen"]["por_encima"] += 1
+
+    # ======================================================
+    # PRIORIDAD FUNCIONAL
+    # ======================================================
+
+    bajas = resultado["resumen"]["por_debajo"]
+
+    if bajas >= 3:
+        prioridad = "Alta"
+    elif bajas >= 1:
+        prioridad = "Seguimiento"
+    else:
+        prioridad = "Sin alerta funcional por baremos"
+
+    resultado["prioridad_funcional"] = prioridad
+
+    return resultado
 # ==========================================================
 # MODELOS EXISTENTES
 # ==========================================================
@@ -384,6 +738,32 @@ async def procesar_test(
 # CREAR EVALUACIÓN
 # ==========================================================
 
+@app.post("/interpretar")
+async def interpretar_sin_guardar(
+    evaluacion: EvaluacionCrear,
+):
+
+    supabase = get_supabase()
+
+    edad = (
+        evaluacion.edad
+        if evaluacion.edad is not None
+        else calcular_edad(
+            evaluacion.fecha_nacimiento
+        )
+    )
+
+    interpretacion = interpretar_evaluacion(
+        supabase=supabase,
+        edad=edad,
+        sexo=evaluacion.sexo,
+        datos=evaluacion.datos,
+    )
+
+    return {
+        "status": "ok",
+        "interpretacion": interpretacion,
+    }
 @app.post("/evaluaciones")
 async def crear_evaluacion(
     evaluacion: EvaluacionCrear,
@@ -404,7 +784,22 @@ async def crear_evaluacion(
             datos["edad"] = calcular_edad(
                 evaluacion.fecha_nacimiento
             )
+            
+        edad_final = datos.get("edad")
 
+        if edad_final is None:
+            edad_final = calcular_edad(
+                evaluacion.fecha_nacimiento
+            )
+
+        interpretacion_automatica = interpretar_evaluacion(
+            supabase=supabase,
+            edad=edad_final,
+            sexo=evaluacion.sexo,
+            datos=evaluacion.datos,
+        )
+
+        datos["interpretacion"] = interpretacion_automatica
         respuesta = (
             supabase
             .table("evaluaciones")
