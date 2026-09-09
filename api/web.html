@@ -1496,6 +1496,32 @@ async function guardarEvaluacion() {
 
   const datos = obtenerDatos("nuevo");
 
+  const validacion =
+  validarValoracion(datos);
+
+if (validacion.errores.length) {
+
+  mensaje(
+    "estadoNueva",
+    validacion.errores.join(" "),
+    "error"
+  );
+
+  return;
+}
+
+if (validacion.advertencias.length) {
+
+  const continuar =
+    confirm(
+      validacion.advertencias.join("\n\n") +
+      "\n\n¿Desea guardar la valoración de todas maneras?"
+    );
+
+  if (!continuar) {
+    return;
+  }
+}
   
   try {
 
