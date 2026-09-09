@@ -245,12 +245,13 @@ def interpretar_evaluacion(
         "grupo_normativo": None,
         "imc": None,
         "pruebas": {},
-        "resumen": {
-            "por_debajo": 0,
-            "dentro_rango": 0,
-            "por_encima": 0,
-            "total_interpretadas": 0,
-        },
+       "resumen": {
+    "por_debajo": 0,
+    "dentro_rango": 0,
+    "por_encima": 0,
+    "datos_a_verificar": 0,
+    "total_interpretadas": 0,
+},
         "advertencias": [],
     }
 
@@ -390,7 +391,30 @@ def interpretar_evaluacion(
 
             valor_baremo = valor_original * 1.0936133
             unidad_ingresada = "metros"
+# ======================================================
+# CONTROL DE PLAUSIBILIDAD
+# No es un punto de corte clínico.
+# Evita interpretar posibles errores de digitación.
+# ======================================================
 
+dato_a_verificar = False
+motivo_verificacion = None
+
+if (
+    clave_prueba == "two_min_step"
+    and valor_original > 200
+):
+    dato_a_verificar = True
+
+    motivo_verificacion = (
+        "El resultado de Marcha de 2 minutos "
+        "es inusualmente alto. Verifique que "
+        "corresponda realmente al número de pasos."
+    )
+
+    resultado["advertencias"].append(
+        motivo_verificacion
+    )
         baremo = obtener_baremo(
             supabase,
             clave_prueba,
@@ -405,22 +429,35 @@ def interpretar_evaluacion(
             )
             continue
 
-        clasificacion = clasificar_por_baremo(
-            valor_baremo,
-            baremo,
-        )
+        if dato_a_verificar:
 
-        criterio = obtener_criterio_mantenimiento(
-            supabase,
-            clave_prueba,
-            sexo,
-            edad,
-        )
+    clasificacion = "Dato a verificar"
 
-        mantenimiento = evaluar_criterio_mantenimiento(
-            valor_baremo,
-            criterio,
-        )
+else:
+
+    clasificacion = clasificar_por_baremo(
+        valor_baremo,
+        baremo,
+    )
+
+      if dato_a_verificar:
+
+    criterio = None
+    mantenimiento = None
+
+else:
+
+    criterio = obtener_criterio_mantenimiento(
+        supabase,
+        clave_prueba,
+        sexo,
+        edad,
+    )
+
+    mantenimiento = evaluar_criterio_mantenimiento(
+        valor_baremo,
+        criterio,
+    )
 
         registro = {
             "nombre": config["nombre"],
@@ -436,24 +473,31 @@ def interpretar_evaluacion(
             ),
             "clasificacion": clasificacion,
             "criterio_mantenimiento": mantenimiento,
+            "valido_para_interpretacion": not dato_a_verificar,
+            "motivo_verificacion": motivo_verificacion,
         }
 
         resultado["pruebas"][clave_prueba] = registro
 
-        resultado["resumen"]["total_interpretadas"] += 1
+      if dato_a_verificar:
 
-        if clasificacion == "Por debajo del rango normal":
+    resultado["resumen"]["datos_a_verificar"] += 1
 
-            resultado["resumen"]["por_debajo"] += 1
+else:
 
-        elif clasificacion == "Dentro del rango normal":
+    resultado["resumen"]["total_interpretadas"] += 1
 
-            resultado["resumen"]["dentro_rango"] += 1
+    if clasificacion == "Por debajo del rango normal":
 
-        else:
+        resultado["resumen"]["por_debajo"] += 1
 
-            resultado["resumen"]["por_encima"] += 1
+    elif clasificacion == "Dentro del rango normal":
 
+        resultado["resumen"]["dentro_rango"] += 1
+
+    else:
+
+        resultado["resumen"]["por_encima"] += 1
     # ======================================================
     # PRIORIDAD FUNCIONAL
     # ======================================================
