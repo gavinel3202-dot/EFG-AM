@@ -1423,10 +1423,15 @@ function validarValoracion(datos) {
 
   // Las dos pruebas aeróbicas no deben coexistir
   const marcha =
-    datos.two_min_step;
+  datos.two_min_step ??
+  datos.marcha_2_min ??
+  null;
 
-  const caminata =
-    datos.six_min_walk;
+const caminata =
+  datos.six_min_walk ??
+  datos.six_min_walk_m ??
+  datos.caminata_6_min ??
+  null;
 
   if (
     marcha !== null &&
