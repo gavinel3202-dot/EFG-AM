@@ -214,6 +214,94 @@
       color: var(--gris);
     }
 
+  .resultado-panel {
+  margin-top: 28px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 18px;
+  background: #fafcfb;
+}
+
+.resultado-panel h2 {
+  margin-bottom: 8px;
+}
+
+.resultado-resumen {
+  padding: 12px;
+  background: white;
+  border: 1px solid var(--borde);
+  border-radius: 9px;
+  margin-bottom: 14px;
+}
+
+.resultado-prueba {
+  border-radius: 9px;
+  padding: 14px;
+  margin: 12px 0;
+  border-left: 6px solid #777;
+  background: white;
+}
+
+.resultado-prueba.normal {
+  border-left-color: #16844b;
+}
+
+.resultado-prueba.bajo {
+  border-left-color: #c62828;
+}
+
+.resultado-prueba.superior {
+  border-left-color: #1976d2;
+}
+
+.resultado-prueba h3 {
+  margin: 0 0 8px;
+  border: 0;
+  padding: 0;
+  font-size: 17px;
+}
+
+.etiqueta-resultado {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 20px;
+  margin-top: 8px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.etiqueta-resultado.normal {
+  background: #e5f5eb;
+  color: #166534;
+}
+
+.etiqueta-resultado.bajo {
+  background: #fde8e8;
+  color: #a61b1b;
+}
+
+.etiqueta-resultado.superior {
+  background: #e7f1ff;
+  color: #1557a0;
+}
+
+.criterio-ok {
+  color: #166534;
+  font-weight: bold;
+}
+
+.criterio-no {
+  color: #9a6700;
+  font-weight: bold;
+}
+
+.prioridad {
+  margin-top: 15px;
+  padding: 13px;
+  border-radius: 8px;
+  background: #f1f4f2;
+  font-weight: bold;
+}
     @media (max-width: 600px) {
       header h1 {
         font-size: 23px;
@@ -305,8 +393,9 @@
       <button class="btn" onclick="guardarEvaluacion()">
         Guardar valoración
       </button>
-
-    </section>
+      
+<div id="resultadoValoracion"></div>
+          </section>
 
 
     <!-- ========================================= -->
@@ -721,6 +810,244 @@ function obtenerDatos(prefijo) {
 /* GUARDAR EVALUACIÓN */
 /* ============================================= */
 
+  function escaparHtml(valor) {
+
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+function numeroBonito(valor) {
+
+  if (valor === null || valor === undefined) {
+    return "";
+  }
+
+  return Number(valor).toLocaleString(
+    "es-CO",
+    {
+      maximumFractionDigits: 2
+    }
+  );
+}
+
+
+function claseResultado(clasificacion) {
+
+  if (
+    clasificacion ===
+    "Por debajo del rango normal"
+  ) {
+    return "bajo";
+  }
+
+  if (
+    clasificacion ===
+    "Por encima del rango normal"
+  ) {
+    return "superior";
+  }
+
+  return "normal";
+}
+
+
+function renderInterpretacion(interpretacion) {
+
+  const contenedor =
+    document.getElementById(
+      "resultadoValoracion"
+    );
+
+  if (!interpretacion) {
+
+    contenedor.innerHTML = "";
+
+    return;
+  }
+
+  const pruebas =
+    interpretacion.pruebas || {};
+
+  const resumen =
+    interpretacion.resumen || {};
+
+  let html = `
+    <div class="resultado-panel">
+
+      <h2>Resultado de la valoración</h2>
+
+      <div class="resultado-resumen">
+
+        <strong>
+          Edad:
+        </strong>
+        ${escaparHtml(interpretacion.edad)} años
+        <br>
+
+        <strong>
+          Grupo normativo:
+        </strong>
+        ${escaparHtml(
+          interpretacion.grupo_normativo
+        )}
+        <br>
+
+        <strong>
+          IMC:
+        </strong>
+        ${
+          interpretacion.imc !== null
+          ? numeroBonito(interpretacion.imc)
+          : "No calculado"
+        }
+
+      </div>
+  `;
+
+  Object.values(pruebas).forEach(prueba => {
+
+    const clase =
+      claseResultado(
+        prueba.clasificacion
+      );
+
+    const limiteMenor =
+      Math.min(
+        Number(prueba.p25),
+        Number(prueba.p75)
+      );
+
+    const limiteMayor =
+      Math.max(
+        Number(prueba.p25),
+        Number(prueba.p75)
+      );
+
+    let mantenimiento = "";
+
+    if (
+      prueba.criterio_mantenimiento
+    ) {
+
+      const criterio =
+        prueba.criterio_mantenimiento;
+
+      mantenimiento = criterio.cumple
+
+        ? `
+          <div class="criterio-ok">
+            ✓ Cumple criterio de mantenimiento
+            (${escaparHtml(criterio.operador)}
+            ${numeroBonito(
+              criterio.valor_objetivo
+            )}
+            ${escaparHtml(
+              criterio.unidad
+            )})
+          </div>
+        `
+
+        : `
+          <div class="criterio-no">
+            ⚠ No alcanza el criterio de mantenimiento
+            (${escaparHtml(criterio.operador)}
+            ${numeroBonito(
+              criterio.valor_objetivo
+            )}
+            ${escaparHtml(
+              criterio.unidad
+            )})
+          </div>
+        `;
+    }
+
+    html += `
+      <div class="resultado-prueba ${clase}">
+
+        <h3>
+          ${escaparHtml(prueba.nombre)}
+        </h3>
+
+        <strong>Resultado:</strong>
+        ${numeroBonito(
+          prueba.resultado_original
+        )}
+        ${escaparHtml(
+          prueba.unidad_ingresada
+        )}
+        <br>
+
+        <strong>Rango normal:</strong>
+        ${numeroBonito(limiteMenor)}
+        –
+        ${numeroBonito(limiteMayor)}
+        ${escaparHtml(
+          prueba.unidad_baremo
+        )}
+        <br>
+
+        <span class="etiqueta-resultado ${clase}">
+          ${escaparHtml(
+            prueba.clasificacion
+          )}
+        </span>
+
+        <div style="margin-top:10px">
+          ${mantenimiento}
+        </div>
+
+      </div>
+    `;
+  });
+
+  html += `
+      <div class="resultado-resumen">
+
+        <strong>Resumen funcional</strong>
+        <br><br>
+
+        Por debajo del rango:
+        ${resumen.por_debajo ?? 0}
+        <br>
+
+        Dentro del rango:
+        ${resumen.dentro_rango ?? 0}
+        <br>
+
+        Por encima del rango:
+        ${resumen.por_encima ?? 0}
+        <br>
+
+        Pruebas interpretadas:
+        ${resumen.total_interpretadas ?? 0}
+
+      </div>
+
+      <div class="prioridad">
+
+        Prioridad de seguimiento funcional:
+        ${escaparHtml(
+          interpretacion.prioridad_funcional
+          || "Sin definir"
+        )}
+
+      </div>
+
+    </div>
+  `;
+
+  contenedor.innerHTML = html;
+
+  contenedor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
 async function guardarEvaluacion() {
 
   const documento =
@@ -798,6 +1125,56 @@ async function guardarEvaluacion() {
       "Valoración guardada correctamente en la nube.",
       "ok"
     );
+    let interpretacion =
+  json.interpretacion ||
+  json.evaluacion?.interpretacion ||
+  json.data?.interpretacion ||
+  null;
+
+
+if (!interpretacion) {
+
+  try {
+
+    const consulta = await fetch(
+      API +
+      "/evaluaciones?documento=" +
+      encodeURIComponent(documento) +
+      "&limite=1"
+    );
+
+    const resultadoConsulta =
+      await consulta.json();
+
+    const registros =
+      Array.isArray(resultadoConsulta)
+      ? resultadoConsulta
+      : (
+          resultadoConsulta.evaluaciones ||
+          resultadoConsulta.data ||
+          []
+        );
+
+    if (registros.length) {
+
+      interpretacion =
+        registros[0].interpretacion ||
+        null;
+    }
+
+  } catch (e) {
+
+    console.log(
+      "No fue posible recuperar la interpretación",
+      e
+    );
+  }
+}
+
+
+renderInterpretacion(
+  interpretacion
+);
 
     document.getElementById("documento").value = "";
     document.getElementById("nombres").value = "";
