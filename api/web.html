@@ -713,6 +713,66 @@ function inputCampo(campo, valor, prefijo) {
 /* RENDER CAMPOS */
 /* ============================================= */
 
+  function configurarPruebasAerobicas(prefijo) {
+
+  const marcha =
+    document.getElementById(
+      prefijo + "_two_min_step"
+    );
+
+  const caminata =
+    document.getElementById(
+      prefijo + "_six_min_walk"
+    );
+
+  if (!marcha || !caminata) {
+    return;
+  }
+
+  function actualizar() {
+
+    const tieneMarcha =
+      marcha.value !== "";
+
+    const tieneCaminata =
+      caminata.value !== "";
+
+    caminata.disabled = tieneMarcha;
+    marcha.disabled = tieneCaminata;
+
+    if (!tieneMarcha && !tieneCaminata) {
+      marcha.disabled = false;
+      caminata.disabled = false;
+    }
+  }
+
+  marcha.addEventListener(
+    "input",
+    function() {
+
+      if (marcha.value !== "") {
+        caminata.value = "";
+      }
+
+      actualizar();
+    }
+  );
+
+  caminata.addEventListener(
+    "input",
+    function() {
+
+      if (caminata.value !== "") {
+        marcha.value = "";
+      }
+
+      actualizar();
+    }
+  );
+
+  actualizar();
+}
+  
 function renderCampos(
   contenedor,
   valores={},
@@ -754,7 +814,8 @@ function renderCampos(
   document
     .getElementById(contenedor)
     .innerHTML = html;
-
+  
+configurarPruebasAerobicas(prefijo);
 }
 
 
@@ -855,7 +916,51 @@ function claseResultado(clasificacion) {
   return "normal";
 }
 
+function convertirBaremoAUnidadIngreso(
+  prueba,
+  valor
+) {
 
+  if (valor === null || valor === undefined) {
+    return valor;
+  }
+
+  const origen =
+    String(prueba.unidad_baremo || "")
+      .toLowerCase();
+
+  const destino =
+    String(prueba.unidad_ingresada || "")
+      .toLowerCase();
+
+  // Yardas → metros
+  if (
+    origen === "yardas" &&
+    destino === "metros"
+  ) {
+    return Number(valor) / 1.0936133;
+  }
+
+  // Pulgadas → centímetros
+  if (
+    origen === "pulgadas" &&
+    destino === "cm"
+  ) {
+    return Number(valor) * 2.54;
+  }
+
+  return Number(valor);
+}
+
+
+function unidadVisible(prueba) {
+
+  return (
+    prueba.unidad_ingresada ||
+    prueba.unidad_baremo ||
+    ""
+  );
+}
 function renderInterpretacion(interpretacion) {
 
   const contenedor =
@@ -916,17 +1021,32 @@ function renderInterpretacion(interpretacion) {
         prueba.clasificacion
       );
 
-    const limiteMenor =
-      Math.min(
-        Number(prueba.p25),
-        Number(prueba.p75)
-      );
+  const p25Visible =
+  convertirBaremoAUnidadIngreso(
+    prueba,
+    prueba.p25
+  );
 
-    const limiteMayor =
-      Math.max(
-        Number(prueba.p25),
-        Number(prueba.p75)
-      );
+const p75Visible =
+  convertirBaremoAUnidadIngreso(
+    prueba,
+    prueba.p75
+  );
+
+const limiteMenor =
+  Math.min(
+    p25Visible,
+    p75Visible
+  );
+
+const limiteMayor =
+  Math.max(
+    p25Visible,
+    p75Visible
+  );
+
+const unidadResultado =
+  unidadVisible(prueba);
 
     let mantenimiento = "";
 
@@ -936,6 +1056,11 @@ function renderInterpretacion(interpretacion) {
 
       const criterio =
         prueba.criterio_mantenimiento;
+      const objetivoVisible =
+  convertirBaremoAUnidadIngreso(
+    prueba,
+    criterio.valor_objetivo
+  );
 
       mantenimiento = criterio.cumple
 
@@ -943,11 +1068,12 @@ function renderInterpretacion(interpretacion) {
           <div class="criterio-ok">
             ✓ Cumple criterio de mantenimiento
             (${escaparHtml(criterio.operador)}
-            ${numeroBonito(
-              criterio.valor_objetivo
+            $numeroBonito(
+  objetivoVisible
+)
             )}
             ${escaparHtml(
-              criterio.unidad
+              unidadResultado
             )})
           </div>
         `
@@ -956,11 +1082,12 @@ function renderInterpretacion(interpretacion) {
           <div class="criterio-no">
             ⚠ No alcanza el criterio de mantenimiento
             (${escaparHtml(criterio.operador)}
-            ${numeroBonito(
-              criterio.valor_objetivo
+            $numeroBonito(
+  objetivoVisible
+)
             )}
             ${escaparHtml(
-              criterio.unidad
+              unidadResultado
             )})
           </div>
         `;
@@ -977,18 +1104,18 @@ function renderInterpretacion(interpretacion) {
         ${numeroBonito(
           prueba.resultado_original
         )}
-        ${escaparHtml(
-          prueba.unidad_ingresada
-        )}
+       ${escaparHtml(
+  unidadResultado
+)}
         <br>
 
         <strong>Rango normal:</strong>
         ${numeroBonito(limiteMenor)}
         –
         ${numeroBonito(limiteMayor)}
-        ${escaparHtml(
-          prueba.unidad_baremo
-        )}
+       ${escaparHtml(
+  unidadResultado
+)}
         <br>
 
         <span class="etiqueta-resultado ${clase}">
