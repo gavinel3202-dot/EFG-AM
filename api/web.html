@@ -1068,8 +1068,8 @@ const unidadResultado =
   const operadorTexto =
     escaparHtml(criterio.operador);
 
- const objetivoTexto =
-  numeroBonito(objetivoVisible);
+  const objetivoTexto =
+    numeroBonito(objetivoVisible);
 
   const unidadTexto =
     escaparHtml(unidadResultado);
@@ -1093,44 +1093,6 @@ const unidadResultado =
     `;
   }
 }
-
-     const criterio =
-  prueba.criterio_mantenimiento;
-
-const objetivoVisible =
-  convertirBaremoAUnidadIngreso(
-    prueba,
-    criterio.valor_objetivo
-  );
-
-const operadorTexto =
-  escaparHtml(criterio.operador);
-
-const objetivoTexto =
-  numeroBonito(objetivoVisible);
-
-const unidadTexto =
-  escaparHtml(unidadResultado);
-
-if (criterio.cumple) {
-
-  mantenimiento = `
-    <div class="criterio-ok">
-      ✓ Cumple criterio de mantenimiento
-      (${operadorTexto} ${objetivoTexto} ${unidadTexto})
-    </div>
-  `;
-
-} else {
-
-  mantenimiento = `
-    <div class="criterio-no">
-      ⚠ No alcanza el criterio de mantenimiento
-      (${operadorTexto} ${objetivoTexto} ${unidadTexto})
-    </div>
-  `;
-}
-    }
 
     html += `
       <div class="resultado-prueba ${clase}">
