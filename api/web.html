@@ -713,16 +713,25 @@ function inputCampo(campo, valor, prefijo) {
 /* RENDER CAMPOS */
 /* ============================================= */
 
-  function configurarPruebasAerobicas(prefijo) {
+function configurarPruebasAerobicas(prefijo) {
 
   const marcha =
     document.getElementById(
       prefijo + "_two_min_step"
+    ) ||
+    document.getElementById(
+      prefijo + "_marcha_2_min"
     );
 
   const caminata =
     document.getElementById(
       prefijo + "_six_min_walk"
+    ) ||
+    document.getElementById(
+      prefijo + "_six_min_walk_m"
+    ) ||
+    document.getElementById(
+      prefijo + "_caminata_6_min"
     );
 
   if (!marcha || !caminata) {
@@ -732,25 +741,20 @@ function inputCampo(campo, valor, prefijo) {
   function actualizar() {
 
     const tieneMarcha =
-      marcha.value !== "";
+      marcha.value.trim() !== "";
 
     const tieneCaminata =
-      caminata.value !== "";
+      caminata.value.trim() !== "";
 
-    caminata.disabled = tieneMarcha;
     marcha.disabled = tieneCaminata;
-
-    if (!tieneMarcha && !tieneCaminata) {
-      marcha.disabled = false;
-      caminata.disabled = false;
-    }
+    caminata.disabled = tieneMarcha;
   }
 
   marcha.addEventListener(
     "input",
     function() {
 
-      if (marcha.value !== "") {
+      if (marcha.value.trim() !== "") {
         caminata.value = "";
       }
 
@@ -762,7 +766,7 @@ function inputCampo(campo, valor, prefijo) {
     "input",
     function() {
 
-      if (caminata.value !== "") {
+      if (caminata.value.trim() !== "") {
         marcha.value = "";
       }
 
@@ -1050,47 +1054,82 @@ const unidadResultado =
 
     let mantenimiento = "";
 
-    if (
-      prueba.criterio_mantenimiento
-    ) {
+    if (prueba.criterio_mantenimiento) {
 
-      const criterio =
-        prueba.criterio_mantenimiento;
-      const objetivoVisible =
+  const criterio =
+    prueba.criterio_mantenimiento;
+
+  const objetivoVisible =
+    convertirBaremoAUnidadIngreso(
+      prueba,
+      criterio.valor_objetivo
+    );
+
+  const operadorTexto =
+    escaparHtml(criterio.operador);
+
+ const objetivoTexto =
+  numeroBonito(objetivoVisible);
+
+  const unidadTexto =
+    escaparHtml(unidadResultado);
+
+  if (criterio.cumple) {
+
+    mantenimiento = `
+      <div class="criterio-ok">
+        ✓ Cumple criterio de mantenimiento
+        (${operadorTexto} ${objetivoTexto} ${unidadTexto})
+      </div>
+    `;
+
+  } else {
+
+    mantenimiento = `
+      <div class="criterio-no">
+        ⚠ No alcanza el criterio de mantenimiento
+        (${operadorTexto} ${objetivoTexto} ${unidadTexto})
+      </div>
+    `;
+  }
+}
+
+     const criterio =
+  prueba.criterio_mantenimiento;
+
+const objetivoVisible =
   convertirBaremoAUnidadIngreso(
     prueba,
     criterio.valor_objetivo
   );
 
-      mantenimiento = criterio.cumple
+const operadorTexto =
+  escaparHtml(criterio.operador);
 
-        ? `
-          <div class="criterio-ok">
-            ✓ Cumple criterio de mantenimiento
-            (${escaparHtml(criterio.operador)}
-            $numeroBonito(
-  objetivoVisible
-)
-            )}
-            ${escaparHtml(
-              unidadResultado
-            )})
-          </div>
-        `
+const objetivoTexto =
+  numeroBonito(objetivoVisible);
 
-        : `
-          <div class="criterio-no">
-            ⚠ No alcanza el criterio de mantenimiento
-            (${escaparHtml(criterio.operador)}
-            $numeroBonito(
-  objetivoVisible
-)
-            )}
-            ${escaparHtml(
-              unidadResultado
-            )})
-          </div>
-        `;
+const unidadTexto =
+  escaparHtml(unidadResultado);
+
+if (criterio.cumple) {
+
+  mantenimiento = `
+    <div class="criterio-ok">
+      ✓ Cumple criterio de mantenimiento
+      (${operadorTexto} ${objetivoTexto} ${unidadTexto})
+    </div>
+  `;
+
+} else {
+
+  mantenimiento = `
+    <div class="criterio-no">
+      ⚠ No alcanza el criterio de mantenimiento
+      (${operadorTexto} ${objetivoTexto} ${unidadTexto})
+    </div>
+  `;
+}
     }
 
     html += `
