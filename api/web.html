@@ -965,7 +965,137 @@ function unidadVisible(prueba) {
     ""
   );
 }
-function renderInterpretacion(interpretacion) {
+function nombreCortoClasificacion(valor) {
+
+  if (
+    valor ===
+    "Por debajo del rango normal"
+  ) {
+    return "Bajo";
+  }
+
+  if (
+    valor ===
+    "Por encima del rango normal"
+  ) {
+    return "Superior";
+  }
+
+  return "Normal";
+}
+
+
+function renderSintesisCapacidades(pruebas) {
+
+  const capacidades = [];
+
+  if (pruebas.arm_curl) {
+
+    capacidades.push({
+      nombre: "Fuerza tren superior",
+      valor:
+        pruebas.arm_curl.clasificacion
+    });
+  }
+
+  if (pruebas.chair_stand) {
+
+    capacidades.push({
+      nombre: "Fuerza tren inferior",
+      valor:
+        pruebas.chair_stand.clasificacion
+    });
+  }
+
+  const aerobica =
+    pruebas.six_min_walk ||
+    pruebas.two_min_step;
+
+  if (aerobica) {
+
+    capacidades.push({
+      nombre: "Resistencia aeróbica",
+      valor:
+        aerobica.clasificacion
+    });
+  }
+
+  if (pruebas.chair_sit_reach) {
+
+    capacidades.push({
+      nombre: "Flexibilidad tren inferior",
+      valor:
+        pruebas.chair_sit_reach.clasificacion
+    });
+  }
+
+  if (pruebas.back_scratch) {
+
+    capacidades.push({
+      nombre: "Flexibilidad tren superior",
+      valor:
+        pruebas.back_scratch.clasificacion
+    });
+  }
+
+  if (pruebas.eight_foot_up_go) {
+
+    capacidades.push({
+      nombre: "Agilidad y equilibrio",
+      valor:
+        pruebas.eight_foot_up_go.clasificacion
+    });
+  }
+
+  if (!capacidades.length) {
+    return "";
+  }
+
+  let html = `
+    <div class="resultado-resumen">
+
+      <strong>
+        Perfil funcional por capacidades
+      </strong>
+
+      <br><br>
+  `;
+
+  capacidades.forEach(c => {
+
+    const clase =
+      claseResultado(c.valor);
+
+    html += `
+      <div style="margin-bottom:8px">
+
+        <span
+          class="etiqueta-resultado ${clase}"
+        >
+          ${escaparHtml(
+            nombreCortoClasificacion(
+              c.valor
+            )
+          )}
+        </span>
+
+        &nbsp;
+
+        <strong>
+          ${escaparHtml(c.nombre)}
+        </strong>
+
+      </div>
+    `;
+  });
+
+  html += `
+    </div>
+  `;
+
+  return html;
+}
+  function renderInterpretacion(interpretacion) {
 
   const contenedor =
     document.getElementById(
@@ -1132,7 +1262,11 @@ const unidadResultado =
       </div>
     `;
   });
-
+html +=
+  renderSintesisCapacidades(
+    pruebas
+  );
+    
   html += `
       <div class="resultado-resumen">
 
@@ -1176,6 +1310,151 @@ const unidadResultado =
     block: "start"
   });
 }
+  function calcularEdadFormulario(fecha) {
+
+  if (!fecha) {
+    return null;
+  }
+
+  const nacimiento = new Date(fecha);
+  const hoy = new Date();
+
+  let edad =
+    hoy.getFullYear() -
+    nacimiento.getFullYear();
+
+  const mes =
+    hoy.getMonth() -
+    nacimiento.getMonth();
+
+  if (
+    mes < 0 ||
+    (
+      mes === 0 &&
+      hoy.getDate() <
+      nacimiento.getDate()
+    )
+  ) {
+    edad--;
+  }
+
+  return edad;
+}
+
+
+function validarValoracion(datos) {
+
+  const errores = [];
+  const advertencias = [];
+
+  const fecha =
+    document
+      .getElementById("fechaNacimiento")
+      .value;
+
+  const edad =
+    calcularEdadFormulario(fecha);
+
+  // SFT normativo disponible: 60-94 años
+  if (
+    edad !== null &&
+    (edad < 60 || edad > 94)
+  ) {
+    errores.push(
+      "La valoración SFT con baremos está configurada para personas entre 60 y 94 años."
+    );
+  }
+
+  // Talla expresada en metros
+  const talla =
+    Number(
+      datos.talla_m ??
+      datos.talla ??
+      0
+    );
+
+  if (talla > 0 && talla >= 3) {
+    errores.push(
+      "La talla debe registrarse en metros. Ejemplo: 1.68."
+    );
+  }
+
+  if (talla < 0) {
+    errores.push(
+      "La talla no puede ser negativa."
+    );
+  }
+
+  const camposNoNegativos = [
+    ["peso_kg", "Peso"],
+    ["chair_stand", "Sentarse y levantarse"],
+    ["arm_curl", "Flexiones del brazo"],
+    ["two_min_step", "Marcha de 2 minutos"],
+    ["six_min_walk", "Caminata de 6 minutos"],
+    ["eight_foot_up_go", "8-Foot Up-and-Go"]
+  ];
+
+  camposNoNegativos.forEach(
+    ([clave, nombre]) => {
+
+      if (
+        datos[clave] !== undefined &&
+        datos[clave] !== null &&
+        Number(datos[clave]) < 0
+      ) {
+        errores.push(
+          nombre +
+          ": el resultado no puede ser negativo."
+        );
+      }
+    }
+  );
+
+  // Up-and-Go debe ser mayor que cero
+  if (
+    datos.eight_foot_up_go !== undefined &&
+    datos.eight_foot_up_go !== null &&
+    Number(datos.eight_foot_up_go) === 0
+  ) {
+    errores.push(
+      "El tiempo del 8-Foot Up-and-Go debe ser mayor que cero."
+    );
+  }
+
+  // Las dos pruebas aeróbicas no deben coexistir
+  const marcha =
+    datos.two_min_step;
+
+  const caminata =
+    datos.six_min_walk;
+
+  if (
+    marcha !== null &&
+    marcha !== undefined &&
+    caminata !== null &&
+    caminata !== undefined
+  ) {
+    errores.push(
+      "Registre Marcha de 2 minutos o Caminata de 6 minutos, no ambas."
+    );
+  }
+
+  // Advertencia de plausibilidad, NO corte clínico
+  if (
+    marcha !== null &&
+    marcha !== undefined &&
+    Number(marcha) > 200
+  ) {
+    advertencias.push(
+      "Marcha de 2 minutos: el valor registrado es inusualmente alto. Verifique que corresponda realmente al número de pasos."
+    );
+  }
+
+  return {
+    errores,
+    advertencias
+  };
+}
 async function guardarEvaluacion() {
 
   const documento =
@@ -1217,6 +1496,7 @@ async function guardarEvaluacion() {
 
   const datos = obtenerDatos("nuevo");
 
+  
   try {
 
     const r = await fetch(
