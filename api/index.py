@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from fastapi.responses import HTMLResponse, Response
 from datetime import date, datetime
@@ -391,30 +390,31 @@ def interpretar_evaluacion(
 
             valor_baremo = valor_original * 1.0936133
             unidad_ingresada = "metros"
-# ======================================================
-# CONTROL DE PLAUSIBILIDAD
-# No es un punto de corte clínico.
-# Evita interpretar posibles errores de digitación.
-# ======================================================
+        # ======================================================
+        # CONTROL DE PLAUSIBILIDAD
+        # No es un punto de corte clínico.
+        # Evita interpretar posibles errores de digitación.
+        # ======================================================
 
-dato_a_verificar = False
-motivo_verificacion = None
+        dato_a_verificar = False
+        motivo_verificacion = None
 
-if (
-    clave_prueba == "two_min_step"
-    and valor_original > 200
-):
-    dato_a_verificar = True
+        if (
+            clave_prueba == "two_min_step"
+            and valor_original > 200
+        ):
+            dato_a_verificar = True
 
-    motivo_verificacion = (
-        "El resultado de Marcha de 2 minutos "
-        "es inusualmente alto. Verifique que "
-        "corresponda realmente al número de pasos."
-    )
+            motivo_verificacion = (
+                "El resultado de Marcha de 2 minutos "
+                "es inusualmente alto. Verifique que "
+                "corresponda realmente al número de pasos."
+            )
 
-    resultado["advertencias"].append(
-        motivo_verificacion
-    )
+            resultado["advertencias"].append(
+                motivo_verificacion
+            )
+
         baremo = obtener_baremo(
             supabase,
             clave_prueba,
@@ -431,33 +431,33 @@ if (
 
         if dato_a_verificar:
 
-    clasificacion = "Dato a verificar"
+            clasificacion = "Dato a verificar"
 
-else:
+        else:
 
-    clasificacion = clasificar_por_baremo(
-        valor_baremo,
-        baremo,
-    )
+            clasificacion = clasificar_por_baremo(
+                valor_baremo,
+                baremo,
+            )
 
-      if dato_a_verificar:
+        if dato_a_verificar:
 
-    criterio = None
-    mantenimiento = None
+            criterio = None
+            mantenimiento = None
 
-else:
+        else:
 
-    criterio = obtener_criterio_mantenimiento(
-        supabase,
-        clave_prueba,
-        sexo,
-        edad,
-    )
+            criterio = obtener_criterio_mantenimiento(
+                supabase,
+                clave_prueba,
+                sexo,
+                edad,
+            )
 
-    mantenimiento = evaluar_criterio_mantenimiento(
-        valor_baremo,
-        criterio,
-    )
+            mantenimiento = evaluar_criterio_mantenimiento(
+                valor_baremo,
+                criterio,
+            )
 
         registro = {
             "nombre": config["nombre"],
@@ -479,25 +479,25 @@ else:
 
         resultado["pruebas"][clave_prueba] = registro
 
-      if dato_a_verificar:
+        if dato_a_verificar:
 
-    resultado["resumen"]["datos_a_verificar"] += 1
+            resultado["resumen"]["datos_a_verificar"] += 1
 
-else:
+        else:
 
-    resultado["resumen"]["total_interpretadas"] += 1
+            resultado["resumen"]["total_interpretadas"] += 1
 
-    if clasificacion == "Por debajo del rango normal":
+            if clasificacion == "Por debajo del rango normal":
 
-        resultado["resumen"]["por_debajo"] += 1
+                resultado["resumen"]["por_debajo"] += 1
 
-    elif clasificacion == "Dentro del rango normal":
+            elif clasificacion == "Dentro del rango normal":
 
-        resultado["resumen"]["dentro_rango"] += 1
+                resultado["resumen"]["dentro_rango"] += 1
 
-    else:
+            else:
 
-        resultado["resumen"]["por_encima"] += 1
+                resultado["resumen"]["por_encima"] += 1
     # ======================================================
     # PRIORIDAD FUNCIONAL
     # ======================================================
@@ -1590,13 +1590,6 @@ async def obtener_evaluacion(
             detail=str(e),
         )
 
- except Exception as e:
-
-    raise HTTPException(
-        status_code=500,
-        detail=str(e),
-    )
-
 
 @app.get("/evaluaciones/{evaluacion_id}/reporte")
 async def descargar_reporte_evaluacion(
@@ -1928,3 +1921,4 @@ async def actualizar_campo(
             status_code=500,
             detail=str(e),
         )
+
