@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from datetime import date, datetime
 from typing import Any, Dict, List, Literal, Optional
 
@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
-
+from fpdf import FPDF
 
 # ==========================================================
 # CONFIGURACIÓN GENERAL
@@ -701,7 +701,602 @@ async def root():
 
     return archivo.read_text(encoding="utf-8")
 
+      
+# ==========================================================
+# INFORME INDIVIDUAL PDF
+# ==========================================================
 
+def texto_pdf(valor):
+    if valor is None:
+        return ""
+
+    return (
+        str(valor)
+        .replace("≥", ">=")
+        .replace("≤", "<=")
+        .replace("✓", "Cumple")
+        .encode("latin-1", errors="replace")
+        .decode("latin-1")
+    )
+
+
+def valor_visible(valor):
+    if valor is None:
+        return ""
+
+    if isinstance(valor, bool):
+        return "Sí" if valor else "No"
+
+    if isinstance(valor, list):
+        return ", ".join(str(x) for x in valor)
+
+    if isinstance(valor, dict):
+        return ", ".join(
+            f"{k}: {v}"
+            for k, v in valor.items()
+        )
+
+    return str(valor)
+
+
+def rango_misma_unidad(prueba, valor):
+    if valor is None:
+        return None
+
+    valor = float(valor)
+
+    unidad_baremo = str(
+        prueba.get("unidad_baremo", "")
+    ).lower()
+
+    unidad_ingreso = str(
+        prueba.get("unidad_ingresada", "")
+    ).lower()
+
+    if (
+        unidad_baremo == "yardas"
+        and unidad_ingreso == "metros"
+    ):
+        return valor / 1.0936133
+
+    if (
+        unidad_baremo == "pulgadas"
+        and unidad_ingreso == "cm"
+    ):
+        return valor * 2.54
+
+    return valor
+
+
+def numero_pdf(valor):
+    if valor is None:
+        return ""
+
+    try:
+        numero = float(valor)
+
+        if numero.is_integer():
+            return str(int(numero))
+
+        return f"{numero:.2f}".replace(".", ",")
+
+    except Exception:
+        return str(valor)
+
+
+class InformeSFT(FPDF):
+
+    def header(self):
+        self.set_font(
+            "Helvetica",
+            "B",
+            15
+        )
+
+        self.cell(
+            0,
+            8,
+            texto_pdf(
+                "Senior Fitness Test INDER"
+            ),
+            ln=1
+        )
+
+        self.set_font(
+            "Helvetica",
+            "",
+            9
+        )
+
+        self.cell(
+            0,
+            6,
+            texto_pdf(
+                "Informe individual de valoración funcional"
+            ),
+            ln=1
+        )
+
+        self.ln(3)
+
+        self.line(
+            self.l_margin,
+            self.get_y(),
+            self.w - self.r_margin,
+            self.get_y()
+        )
+
+        self.ln(5)
+
+
+    def footer(self):
+        self.set_y(-15)
+
+        self.set_font(
+            "Helvetica",
+            "",
+            8
+        )
+
+        self.cell(
+            0,
+            8,
+            texto_pdf(
+                f"Página {self.page_no()}"
+            ),
+            align="C"
+        )
+
+
+def titulo_seccion(pdf, titulo):
+    pdf.ln(3)
+
+    pdf.set_font(
+        "Helvetica",
+        "B",
+        11
+    )
+
+    pdf.cell(
+        0,
+        7,
+        texto_pdf(titulo),
+        ln=1
+    )
+
+    pdf.line(
+        pdf.l_margin,
+        pdf.get_y(),
+        pdf.w - pdf.r_margin,
+        pdf.get_y()
+    )
+
+    pdf.ln(2)
+
+
+def linea_dato(pdf, etiqueta, valor):
+    if valor in (
+        None,
+        "",
+        [],
+        {}
+    ):
+        return
+
+    pdf.set_font(
+        "Helvetica",
+        "B",
+        9
+    )
+
+    pdf.cell(
+        52,
+        6,
+        texto_pdf(etiqueta + ":")
+    )
+
+    pdf.set_font(
+        "Helvetica",
+        "",
+        9
+    )
+
+    pdf.multi_cell(
+        0,
+        6,
+        texto_pdf(
+            valor_visible(valor)
+        )
+    )
+
+
+def construir_pdf_evaluacion(
+    evaluacion,
+    campos
+):
+    pdf = InformeSFT()
+
+    pdf.set_auto_page_break(
+        auto=True,
+        margin=18
+    )
+
+    pdf.add_page()
+
+    datos = (
+        evaluacion.get("datos")
+        or {}
+    )
+
+    interpretacion = (
+        evaluacion.get("interpretacion")
+        or {}
+    )
+
+    # IDENTIFICACIÓN
+
+    titulo_seccion(
+        pdf,
+        "1. Identificación"
+    )
+
+    linea_dato(
+        pdf,
+        "Documento",
+        evaluacion.get("documento")
+    )
+
+    linea_dato(
+        pdf,
+        "Nombres y apellidos",
+        evaluacion.get("nombres")
+    )
+
+    linea_dato(
+        pdf,
+        "Fecha de nacimiento",
+        evaluacion.get(
+            "fecha_nacimiento"
+        )
+    )
+
+    linea_dato(
+        pdf,
+        "Edad",
+        evaluacion.get("edad")
+    )
+
+    linea_dato(
+        pdf,
+        "Sexo",
+        evaluacion.get("sexo")
+    )
+
+    linea_dato(
+        pdf,
+        "Fecha de valoración",
+        evaluacion.get("created_at")
+    )
+
+    # CAMPOS REGISTRADOS
+
+    grupos = {}
+
+    for campo in campos:
+
+        clave = campo.get("clave")
+
+        if not clave:
+            continue
+
+        valor = datos.get(clave)
+
+        if valor in (
+            None,
+            "",
+            [],
+            {}
+        ):
+            continue
+
+        grupo = (
+            campo.get("grupo")
+            or "Otros"
+        )
+
+        grupos.setdefault(
+            grupo,
+            []
+        ).append(
+            (
+                campo,
+                valor
+            )
+        )
+
+    numero_seccion = 2
+
+    for grupo, elementos in grupos.items():
+
+        titulo_seccion(
+            pdf,
+            f"{numero_seccion}. {grupo}"
+        )
+
+        numero_seccion += 1
+
+        for campo, valor in elementos:
+
+            etiqueta = (
+                campo.get("etiqueta")
+                or campo.get("clave")
+            )
+
+            unidad = campo.get("unidad")
+
+            if unidad:
+                etiqueta += f" ({unidad})"
+
+            linea_dato(
+                pdf,
+                etiqueta,
+                valor
+            )
+
+    # INTERPRETACIÓN SFT
+
+    pruebas = (
+        interpretacion.get("pruebas")
+        or {}
+    )
+
+    if pruebas:
+
+        titulo_seccion(
+            pdf,
+            f"{numero_seccion}. Interpretación SFT"
+        )
+
+        numero_seccion += 1
+
+        linea_dato(
+            pdf,
+            "Grupo normativo",
+            interpretacion.get(
+                "grupo_normativo"
+            )
+        )
+
+        linea_dato(
+            pdf,
+            "IMC",
+            interpretacion.get("imc")
+        )
+
+        pdf.ln(2)
+
+        for prueba in pruebas.values():
+
+            pdf.set_font(
+                "Helvetica",
+                "B",
+                10
+            )
+
+            pdf.multi_cell(
+                0,
+                6,
+                texto_pdf(
+                    prueba.get(
+                        "nombre",
+                        "Prueba"
+                    )
+                )
+            )
+
+            resultado_original = (
+                prueba.get(
+                    "resultado_original"
+                )
+            )
+
+            unidad_ingresada = (
+                prueba.get(
+                    "unidad_ingresada",
+                    ""
+                )
+            )
+
+            linea_dato(
+                pdf,
+                "Resultado",
+                (
+                    f"{numero_pdf(resultado_original)} "
+                    f"{unidad_ingresada}"
+                )
+            )
+
+            p25 = rango_misma_unidad(
+                prueba,
+                prueba.get("p25")
+            )
+
+            p75 = rango_misma_unidad(
+                prueba,
+                prueba.get("p75")
+            )
+
+            if (
+                p25 is not None
+                and p75 is not None
+            ):
+
+                minimo = min(
+                    p25,
+                    p75
+                )
+
+                maximo = max(
+                    p25,
+                    p75
+                )
+
+                linea_dato(
+                    pdf,
+                    "Rango normal",
+                    (
+                        f"{numero_pdf(minimo)} - "
+                        f"{numero_pdf(maximo)} "
+                        f"{unidad_ingresada}"
+                    )
+                )
+
+            linea_dato(
+                pdf,
+                "Clasificación",
+                prueba.get(
+                    "clasificacion"
+                )
+            )
+
+            if (
+                prueba.get(
+                    "valido_para_interpretacion"
+                )
+                is False
+            ):
+                linea_dato(
+                    pdf,
+                    "Advertencia",
+                    prueba.get(
+                        "motivo_verificacion"
+                    )
+                )
+
+            criterio = (
+                prueba.get(
+                    "criterio_mantenimiento"
+                )
+            )
+
+            if criterio:
+
+                objetivo = rango_misma_unidad(
+                    prueba,
+                    criterio.get(
+                        "valor_objetivo"
+                    )
+                )
+
+                cumple = (
+                    "Sí"
+                    if criterio.get("cumple")
+                    else "No"
+                )
+
+                linea_dato(
+                    pdf,
+                    "Criterio de mantenimiento",
+                    (
+                        f"{cumple} "
+                        f"({criterio.get('operador')} "
+                        f"{numero_pdf(objetivo)} "
+                        f"{unidad_ingresada})"
+                    )
+                )
+
+            pdf.ln(3)
+
+    # RESUMEN FUNCIONAL
+
+    resumen = (
+        interpretacion.get("resumen")
+        or {}
+    )
+
+    if resumen:
+
+        titulo_seccion(
+            pdf,
+            f"{numero_seccion}. Resumen funcional"
+        )
+
+        linea_dato(
+            pdf,
+            "Por debajo del rango",
+            resumen.get(
+                "por_debajo",
+                0
+            )
+        )
+
+        linea_dato(
+            pdf,
+            "Dentro del rango",
+            resumen.get(
+                "dentro_rango",
+                0
+            )
+        )
+
+        linea_dato(
+            pdf,
+            "Por encima del rango",
+            resumen.get(
+                "por_encima",
+                0
+            )
+        )
+
+        linea_dato(
+            pdf,
+            "Datos a verificar",
+            resumen.get(
+                "datos_a_verificar",
+                0
+            )
+        )
+
+        linea_dato(
+            pdf,
+            "Pruebas interpretadas",
+            resumen.get(
+                "total_interpretadas",
+                0
+            )
+        )
+
+        linea_dato(
+            pdf,
+            "Prioridad funcional",
+            interpretacion.get(
+                "prioridad_funcional"
+            )
+        )
+
+    pdf.ln(5)
+
+    pdf.set_font(
+        "Helvetica",
+        "I",
+        8
+    )
+
+    pdf.multi_cell(
+        0,
+        5,
+        texto_pdf(
+            "Este informe presenta los resultados registrados "
+            "durante la valoración y su comparación con los "
+            "baremos configurados en la aplicación. "
+            "La interpretación no reemplaza una valoración médica."
+        )
+    )
+
+    return bytes(
+        pdf.output()
+    )
+    
 # ==========================================================
 # COMPROBAR CONEXIÓN SUPABASE
 # ==========================================================
@@ -995,6 +1590,80 @@ async def obtener_evaluacion(
             detail=str(e),
         )
 
+ except Exception as e:
+
+    raise HTTPException(
+        status_code=500,
+        detail=str(e),
+    )
+
+
+@app.get("/evaluaciones/{evaluacion_id}/reporte")
+async def descargar_reporte_evaluacion(
+    evaluacion_id: str
+):
+
+    supabase = get_supabase()
+
+    respuesta = (
+        supabase
+        .table("evaluaciones")
+        .select("*")
+        .eq("id", evaluacion_id)
+        .limit(1)
+        .execute()
+    )
+
+    if not respuesta.data:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró la valoración."
+        )
+
+    evaluacion = respuesta.data[0]
+
+    respuesta_campos = (
+        supabase
+        .table("campos")
+        .select("*")
+        .eq("activo", True)
+        .order("grupo")
+        .order("orden")
+        .execute()
+    )
+
+    campos = respuesta_campos.data or []
+
+    contenido = construir_pdf_evaluacion(
+        evaluacion,
+        campos
+    )
+
+    documento = (
+        evaluacion.get("documento")
+        or "sin_documento"
+    )
+
+    nombre_archivo = (
+        f"SFT_{documento}.pdf"
+    )
+
+    return Response(
+        content=contenido,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+                (
+                    "attachment; "
+                    f'filename="{nombre_archivo}"'
+                )
+        }
+    )
+
+
+# ==========================================================
+# ACTUALIZAR EVALUACIÓN
+# ==========================================================
 
 # ==========================================================
 # ACTUALIZAR EVALUACIÓN
